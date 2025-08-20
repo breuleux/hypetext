@@ -1,6 +1,6 @@
 [project]
 name = "hypetext"
-version = "0.0.1"
+version = "0.0.0"
 description = "HTML generation based on template strings"
 readme = "README.md"
 authors = [
@@ -10,6 +10,10 @@ requires-python = ">=3.14"
 dependencies = [
     "ovld>=0.5.10",
 ]
+
+[project.urls]
+Homepage = "https://github.com/breuleux/hypetext"
+Repository = "https://github.com/breuleux/hypetext"
 
 [build-system]
 requires = ["hatchling"]
