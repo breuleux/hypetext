@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+import pytest
+
 from hypetext.h import Constructor, html
 
 
@@ -38,7 +40,20 @@ def topage(t):
 
 
 def test_no_interpolation():
-    assert tostr(t"<b>hello</b>") == "<b>hello</b>"
+    assert tostr("<b>hello</b>") == "<b>hello</b>"
+
+
+def test_alt_closing():
+    assert tostr("<b>hello</>") == "<b>hello</b>"
+
+
+def test_auto_closing():
+    assert tostr("<b><i>hello") == "<b><i>hello</i></b>"
+
+
+def test_tag_mismatch():
+    with pytest.raises(Exception, match="End tag 'i' does not match"):
+        tostr("<b>hello</i>")
 
 
 def test_h():
@@ -46,6 +61,7 @@ def test_h():
     assert tostr(t"<div>{Bold('HELLO')}</div>") == "<div><b>HELLO</b></div>"
     assert tostr(Bold("<hello>")) == "<b>&lt;hello&gt;</b>"
     assert tostr(Bold(Italic("HELLO"))) == "<b><i>HELLO</i></b>"
+    assert tostr(t"{Bold('HELLO')!s}") == "Bold(message=&#x27;HELLO&#x27;)"
 
 
 def test_raw():
@@ -105,9 +121,20 @@ class Repeat(Constructor):
             yield from interp.gen(self.children, None, "", None)
 
 
+def test_bad_tag():
+    with pytest.raises(ValueError, match="Invalid interpolation"):
+        tostr(t"<{1}>xxx</{1}>")
+
+
 def test_custom_element():
     a = tostr(t"<{Repeat} n=3><b>hello</b></{Repeat}>")
     assert a == "<b>hello</b>" * 3
+
+
+def test_resources_explicit(file_regression):
+    sty = t'<style>div {{ color: "blue"; }}</style>'
+    h = html(t"<div>cool{sty:res}</div>")
+    file_regression.check(h.page())
 
 
 def test_resources(file_regression):

@@ -5,7 +5,7 @@ from html import escape
 from html.parser import HTMLParser
 from string.templatelib import Interpolation, Template
 from types import NoneType
-from typing import Any, Iterable, Literal
+from typing import Any, Collection, Literal
 from uuid import uuid4
 
 from ovld import Medley, ovld, recurse
@@ -142,7 +142,7 @@ def html(tpl: Template):
                         cons, Constructor
                     ):
                         new_node = cons.make(attrs, [])
-                    case _:
+                    case _:  # pragma: no cover
                         raise ValueError(f"Invalid interpolation in tag name: {tag}")
 
                 if self_closing:
@@ -153,14 +153,16 @@ def html(tpl: Template):
                 top = stack.pop()
                 if is_partial:
                     match _retemplate(tag):
-                        case (str() as s) | Interpolation(s, _, None, ""):
+                        case (str() as s) | Interpolation(str() as s, _, None, ""):
                             tag = s
-                        case Interpolation(Constructor() as cons, _, None, ""):
+                        case Interpolation(type() as cons, _, None, "") if issubclass(
+                            cons, Constructor
+                        ):
                             tag = cons
-                        case _:
-                            raise ValueError("Invalid interpolation in tag name.")
+                        case _:  # pragma: no cover
+                            raise ValueError(f"Invalid interpolation in tag name: {tag}")
                 toptag = top.tag if isinstance(top, Node) else type(top)
-                if tag != toptag:
+                if tag != "" and tag != toptag:
                     raise ValueError(f"End tag {tag!r} does not match start tag {toptag!r}")
                 stack[-1].children.append(top)
             case ("data", data):
@@ -185,6 +187,8 @@ def html(tpl: Template):
                     q.appendleft(ph)
                 else:
                     stack[-1].children.append(entry)
+    while len(stack) > 1:
+        stack[-2].children.append(stack.pop())
     (node,) = stack
     assert not node.attrs
     match node.children:
@@ -222,7 +226,7 @@ class Interpreter(Medley):
             yield ("res", hres)
         yield from recurse(value.__h__(), conv, fmt, attr)
 
-    def gen(self, value: Iterable, conv: None, fmt: str, attr: object):
+    def gen(self, value: Collection, conv: None, fmt: str, attr: object):
         joiner = " " if attr else ""
         if m := re.fullmatch(pattern=r"<([a-zA-Z_-]+)?(\.[a-zA-Z_-]+)?>", string=fmt):
             tag, cls = m.groups()
@@ -248,7 +252,7 @@ class Interpreter(Medley):
         return []
 
     def gen(self, value: object, conv: None, fmt: str, attr: object):
-        yield ("object", value, attr)
+        yield ("lit", escape(str(value)))
 
     def gen(self, value: Interpolation, conv: None, fmt: Literal[""], attr: object):
         yield from recurse(value.value, value.conversion, value.format_spec, attr)
@@ -291,11 +295,9 @@ class Interpreter(Medley):
             match part:
                 case ("lit", s):
                     yield s
-                case ("object", o, _):
-                    yield escape(str(o))
                 case ("res" | "extra", _):
                     pass
-                case _:
+                case _:  # pragma: no cover
                     raise Exception(f"Unrecognized part: {part}")
 
     def compose(self, root, filter):
@@ -305,11 +307,9 @@ class Interpreter(Medley):
             match part:
                 case ("lit", s):
                     body.append(s)
-                case ("object", o, _):
-                    body.append(escape(str(o)))
                 case ("res", res):
                     resources.append(res)
-                case _:
+                case _:  # pragma: no cover
                     raise Exception(f"Unrecognized part: {part}")
         return "".join(body), resources
 
