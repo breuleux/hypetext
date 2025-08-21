@@ -118,7 +118,7 @@ class Repeat(Constructor):
 
     def gen(self, interp):
         for _ in range(self.n):
-            yield from interp.gen(self.children, None, "", None)
+            yield from interp.gen(self.children)
 
 
 def test_bad_tag():
