@@ -8,7 +8,7 @@ authors = [
 ]
 requires-python = ">=3.14"
 dependencies = [
-    "ovld>=0.5.10",
+    "ovld>=0.5.17",
 ]
 
 [project.urls]
