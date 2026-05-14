@@ -87,9 +87,6 @@ class Node:
 
 
 class Constructor:
-    def gen(self, interpreter):
-        yield ("lit", "boof")
-
     @classmethod
     def make(cls, attrs, children):
         attrs = {k: v.value if isinstance(v, Interpolation) else v for k, v in attrs}
@@ -116,10 +113,22 @@ def html(tpl: Template):
     stack = [Node(None, [], [])]
     is_partial = False
 
-    def _retemplate(part):
+    def _retemplate(part, force_format=None):
         if part is None:
             return None
         new_parts = [mappings.get(x, x) for x in pattern.split(part) if x]
+        if force_format:
+            new_parts = [
+                Interpolation(
+                    conversion=p.conversion,
+                    expression=p.expression,
+                    format_spec=p.format_spec or force_format,
+                    value=p.value,
+                )
+                if isinstance(p, Interpolation)
+                else p
+                for p in new_parts
+            ]
         match new_parts:
             case [str() as v]:
                 return v
@@ -166,7 +175,7 @@ def html(tpl: Template):
                     raise ValueError(f"End tag {tag!r} does not match start tag {toptag!r}")
                 stack[-1].children.append(top)
             case ("data", data):
-                stack[-1].children.append(data)
+                stack[-1].children.append(_retemplate(data, stack[-1].tag))
             case ("partial", _):
                 return True
         return False
