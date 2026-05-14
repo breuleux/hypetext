@@ -1,6 +1,6 @@
 [project]
 name = "hypetext"
-version = "0.0.2"
+version = "0.0.3"
 description = "HTML generation based on template strings"
 readme = "README.md"
 authors = [
