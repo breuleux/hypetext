@@ -136,6 +136,11 @@ def test_script():
     assert a == "<script>console.log(1 + 2)</script>"
 
 
+def test_script_quoting():
+    a = tostr(t"<script>console.log(1 + {'waw'})</script>")
+    assert a == '<script>console.log(1 + "waw")</script>'
+
+
 def test_resources_explicit(file_regression):
     sty = t'<style>div {{ color: "blue"; }}</style>'
     h = html(t"<div>cool{sty:res}</div>")
