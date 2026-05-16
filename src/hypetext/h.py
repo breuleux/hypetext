@@ -122,7 +122,7 @@ def html(tpl: Template):
                 Interpolation(
                     conversion=p.conversion,
                     expression=p.expression,
-                    format_spec=p.format_spec or force_format,
+                    format_spec=p.format_spec,
                     value=p.value,
                 )
                 if isinstance(p, Interpolation)
@@ -296,15 +296,15 @@ class Interpreter(Medley):
                 case str():
                     yield ("lit", child)
                 case _:
-                    yield from recurse(child, "", None)
+                    yield from recurse(child, "", None if value.tag else attr)
         if value.tag:
             yield ("lit", f"</{value.tag}>")
 
     def gen(self, value: Any):
         return recurse(value, "", None)
 
-    def string_parts(self, root):
-        for part in self.gen(root):
+    def string_parts(self, root, fmt="", attr=None):
+        for part in self.gen(root, fmt, attr):
             match part:
                 case ("lit", s):
                     yield s
