@@ -209,34 +209,31 @@ def html(tpl: Template):
 
 
 class Interpreter(Medley):
-    # def parse(self, value: object, conv: Literal["r"], fmt: Literal[""], attr: object):
-    #     yield from recurse(hrepr(value, None, ""))
-
-    def gen(self, value: object, fmt: Literal["s!"], attr: object, tag: object):
+    def gen(self, value: Any, fmt: Literal["s!"], tag: Any, attr: Any):
         yield ("lit", escape(str(value)))
 
-    def gen(self, value: object, fmt: Literal["a!"], attr: object, tag: object):
+    def gen(self, value: Any, fmt: Literal["a!"], tag: Any, attr: Any):
         yield ("lit", escape(ascii(value)))
 
-    def gen(self, value: object, fmt: Literal["res"], attr: object, tag: object):
+    def gen(self, value: Any, fmt: Literal["res"], tag: Any, attr: Any):
         yield ("res", value)
 
-    def gen(self, value: object, fmt: Literal["extra"], attr: object, tag: object):
+    def gen(self, value: Any, fmt: Literal["extra"], tag: Any, attr: Any):
         yield ("extra", value)
 
-    def gen(self, value: str, fmt: Literal["raw"], attr: object, tag: object):
+    def gen(self, value: str, fmt: Literal["raw"], tag: Any, attr: Any):
         yield ("lit", value)
 
-    def gen(self, value: str, fmt: str, attr: object, tag: object):
+    def gen(self, value: str, fmt: str, tag: Any, attr: Any):
         assert not fmt  # TODO: apply fmt
         yield ("lit", escape(value))
 
-    def gen(self, value: HasMethod["__h__"], fmt: Literal[""], attr: object, tag: object):  # noqa: F821
+    def gen(self, value: HasMethod["__h__"], fmt: Literal[""], tag: Any, attr: Any):  # noqa: F821
         if hres := getattr(value, "__hresources__", None):
             yield ("res", hres)
-        yield from recurse(value.__h__(), fmt, attr, tag)
+        yield from recurse(value.__h__(), fmt, tag, attr)
 
-    def gen(self, value: Collection, fmt: str, attr: object, tag: object):
+    def gen(self, value: Collection, fmt: str, tag: Any, attr: Any):
         joiner = " " if attr else ""
         if m := re.fullmatch(pattern=r"<([a-zA-Z_-]+)?(\.[a-zA-Z_-]+)?>", string=fmt):
             wrap_tag, cls = m.groups()
@@ -257,25 +254,25 @@ class Interpreter(Medley):
             for i, x in enumerate(value):
                 if i > 0:
                     yield ("lit", joiner)
-                yield from recurse(x, fmt, attr, tag)
+                yield from recurse(x, fmt, tag, attr)
         else:
             for x in value:
-                yield from recurse(x, fmt, attr, tag)
+                yield from recurse(x, fmt, tag, attr)
 
-    def gen(self, value: NoneType, fmt: str, attr: object, tag: object):
+    def gen(self, value: NoneType, fmt: str, tag: Any, attr: Any):
         return []
 
-    def gen(self, value: object, fmt: str, attr: object, tag: object):
+    def gen(self, value: Any, fmt: str, tag: Any, attr: Any):
         yield ("lit", escape(str(value)))
 
-    def gen(self, value: Interpolation, fmt: Literal[""], attr: object, tag: object):
+    def gen(self, value: Interpolation, fmt: Literal[""], tag: Any, attr: Any):
         if value.conversion is None:
             fmt = value.format_spec
         else:
             fmt = f"{value.conversion}!{value.format_spec}"
-        yield from recurse(value.value, fmt, attr, tag)
+        yield from recurse(value.value, fmt, tag, attr)
 
-    def gen(self, value: Interpolation, fmt: Literal[""], attr: NoneType, tag: Literal["script"]):
+    def gen(self, value: Interpolation, fmt: Literal[""], tag: Literal["script"], attr: None):
         if value.conversion is None and value.format_spec == "":
             yield ("lit", json.dumps(value.value))
         else:
@@ -284,15 +281,15 @@ class Interpreter(Medley):
                 if value.conversion is not None
                 else value.format_spec
             )
-            yield from recurse(value.value, actual_fmt, attr, tag)
+            yield from recurse(value.value, actual_fmt, tag, attr)
 
-    def gen(self, value: Template, fmt: Literal[""], attr: object, tag: object):
-        yield from recurse(html(value), fmt, attr, tag)
+    def gen(self, value: Template, fmt: Literal[""], tag: Any, attr: Any):
+        yield from recurse(html(value), fmt, tag, attr)
 
-    def gen(self, value: Constructor, fmt: Literal[""], attr: object, tag: object):
+    def gen(self, value: Constructor, fmt: Literal[""], tag: Any, attr: Any):
         yield from value.gen(self)
 
-    def gen(self, value: Node, fmt: Literal[""], attr: object, tag: object):
+    def gen(self, value: Node, fmt: Literal[""], tag: Any, attr: Any):
         if value.tag:
             yield ("lit", f"<{value.tag}")
             for k, v in value.attrs:
@@ -300,7 +297,7 @@ class Interpreter(Medley):
                     yield ("lit", f" {k}")
                     continue
                 yield ("lit", f' {k}="')
-                yield from recurse(v, "", k, value.tag)
+                yield from recurse(v, "", value.tag, k)
                 yield ("lit", '"')
             if value.self_closing:
                 assert not value.children
@@ -313,15 +310,15 @@ class Interpreter(Medley):
                 case str():
                     yield ("lit", child)
                 case _:
-                    yield from recurse(child, "", None if value.tag else attr, child_tag)
+                    yield from recurse(child, "", child_tag, None if value.tag else attr)
         if value.tag:
             yield ("lit", f"</{value.tag}>")
 
     def gen(self, value: Any):
         return recurse(value, "", None, None)
 
-    def string_parts(self, root, fmt="", attr=None, tag=None):
-        for part in self.gen(root, fmt, attr, tag):
+    def string_parts(self, root, fmt="", tag=None, attr=None):
+        for part in self.gen(root, fmt, tag, attr):
             match part:
                 case ("lit", s):
                     yield s
